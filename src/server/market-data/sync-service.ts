@@ -236,6 +236,45 @@ async function upsertMarketPayload(markets: NormalizedMarket[]) {
   });
 }
 
+async function deactivateMissingLiveMarkets(markets: NormalizedMarket[]) {
+  const liveKeys = new Set(
+    markets.flatMap((market) => [market.slug, market.externalId].filter(Boolean) as string[]),
+  );
+
+  const existingLiveMarkets = await prisma.market.findMany({
+    where: {
+      OR: [{ sourceMode: "LIVE" }, { sourceMode: "FALLBACK" }, { sourceMode: "MOCK" }],
+      status: {
+        in: ["ACTIVE", "RESOLVED"],
+      },
+    },
+    select: {
+      id: true,
+      slug: true,
+      externalId: true,
+    },
+  });
+
+  const staleIds = existingLiveMarkets
+    .filter((market) => !liveKeys.has(market.slug) && !(market.externalId && liveKeys.has(market.externalId)))
+    .map((market) => market.id);
+
+  if (!staleIds.length) {
+    return;
+  }
+
+  await prisma.market.updateMany({
+    where: {
+      id: {
+        in: staleIds,
+      },
+    },
+    data: {
+      status: "PAUSED",
+    },
+  });
+}
+
 export async function syncMarketData(force = false) {
   const config = getAppConfig();
   const now = Date.now();
@@ -252,6 +291,10 @@ export async function syncMarketData(force = false) {
     const existingMarkets = await getExistingMarkets();
     const payload = await loadProviderPayload(existingMarkets);
     await upsertMarketPayload(payload.markets);
+
+    if (payload.sourceMode === "LIVE") {
+      await deactivateMissingLiveMarkets(payload.markets);
+    }
 
     await prisma.activityLog.create({
       data: {
