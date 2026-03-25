@@ -15,6 +15,8 @@ type FetchAttempt = {
   label: string;
 };
 
+const POSTGRES_INT_MAX = 2_147_483_647;
+
 function asString(value: unknown) {
   return typeof value === "string" ? value : typeof value === "number" ? String(value) : "";
 }
@@ -292,6 +294,14 @@ function normalizeLiquidity(value: number | null) {
   return clamp(Math.round(Math.log10(value + 1) * 20), 0, 100);
 }
 
+function normalizeCurrencyCents(value: number) {
+  if (!Number.isFinite(value) || value <= 0) {
+    return 0;
+  }
+
+  return clamp(Math.round(value * 100), 0, POSTGRES_INT_MAX);
+}
+
 function mapRawMarket(raw: RawRecord): NormalizedMarket | null {
   const title = asString(raw.question ?? raw.title ?? raw.name);
   const prices = parseOutcomePrices(raw);
@@ -333,7 +343,7 @@ function mapRawMarket(raw: RawRecord): NormalizedMarket | null {
     tags,
     yesPriceCents: prices.yesPriceCents,
     noPriceCents: prices.noPriceCents,
-    volume24hCents: Math.max(0, Math.round(volume24h * 100)),
+    volume24hCents: normalizeCurrencyCents(volume24h),
     liquidityScore: normalizeLiquidity(liquidityRaw),
     featured: volume24h > 25_000,
     sourceUrl:
