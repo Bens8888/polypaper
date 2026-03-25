@@ -1,0 +1,287 @@
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "binary"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum MarketStatus {
+  ACTIVE
+  RESOLVED
+  CLOSED
+  PAUSED
+}
+
+enum TradeSide {
+  BUY
+  SELL
+}
+
+enum OrderType {
+  MARKET
+  LIMIT
+}
+
+enum OrderStatus {
+  PENDING
+  FILLED
+  REJECTED
+  CANCELLED
+}
+
+enum ActivityType {
+  ACCOUNT_CREATED
+  TRADE_EXECUTED
+  WATCHLIST_ADDED
+  WATCHLIST_REMOVED
+  COMMENT_CREATED
+  PROFILE_UPDATED
+  ACCOUNT_RESET
+  MARKET_SYNC
+  POSITION_SETTLED
+}
+
+enum OutcomeKey {
+  YES
+  NO
+}
+
+enum DataMode {
+  LIVE
+  MOCK
+  FALLBACK
+}
+
+model User {
+  id                   String                @id @default(cuid())
+  email                String                @unique
+  passwordHash         String
+  username             String                @unique
+  displayName          String?
+  avatarUrl            String?
+  role                 UserRole              @default(USER)
+  emailVerifiedAt      DateTime?
+  preferences          Json?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  account              Account?
+  positions            Position[]
+  orders               Order[]
+  fills                Fill[]
+  activityLogs         ActivityLog[]
+  watchlistItems       WatchlistItem[]
+  comments             Comment[]
+  leaderboardSnapshots LeaderboardSnapshot[]
+}
+
+model Account {
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  cashBalanceCents     Int
+  startingBalanceCents Int
+  resetCount           Int      @default(0)
+  lastResetAt          DateTime?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Market {
+  id                String         @id @default(cuid())
+  externalId        String?        @unique
+  slug              String         @unique
+  title             String
+  description       String
+  category          String
+  tags              String[]       @default([])
+  status            MarketStatus   @default(ACTIVE)
+  sourceMode        DataMode       @default(MOCK)
+  sourceUrl         String?
+  imageUrl          String?
+  liquidityScore    Int            @default(0)
+  volume24hCents    Int            @default(0)
+  featured          Boolean        @default(false)
+  endsAt            DateTime
+  resolvedAt        DateTime?
+  resolvedOutcomeId String?
+  priceUpdatedAt    DateTime?
+  lastSyncedAt      DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  resolvedOutcome   Outcome?       @relation("ResolvedOutcome", fields: [resolvedOutcomeId], references: [id], onDelete: SetNull)
+  outcomes          Outcome[]
+  positions         Position[]
+  orders            Order[]
+  fills             Fill[]
+  activityLogs      ActivityLog[]
+  watchlistItems    WatchlistItem[]
+  pricePoints       PricePoint[]
+  comments          Comment[]
+
+  @@index([category, status, endsAt])
+  @@index([status, endsAt])
+}
+
+model Outcome {
+  id               String      @id @default(cuid())
+  marketId         String
+  key              OutcomeKey
+  label            String
+  priceCents       Int
+  previousPriceCents Int       @default(0)
+  change24hBps     Int         @default(0)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  market           Market      @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  positions        Position[]
+  orders           Order[]
+  fills            Fill[]
+  resolvedMarkets  Market[]    @relation("ResolvedOutcome")
+
+  @@unique([marketId, key])
+  @@index([marketId, priceCents])
+}
+
+model Position {
+  id                String    @id @default(cuid())
+  userId            String
+  marketId          String
+  outcomeId         String
+  shares            Int       @default(0)
+  costBasisCents    Int       @default(0)
+  avgEntryPriceCents Int      @default(0)
+  realizedPnlCents  Int       @default(0)
+  settledPayoutCents Int      @default(0)
+  closedAt          DateTime?
+  settledAt         DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  market            Market    @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  outcome           Outcome   @relation(fields: [outcomeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, outcomeId])
+  @@index([userId, marketId])
+}
+
+model Order {
+  id                  String      @id @default(cuid())
+  userId              String
+  marketId            String
+  outcomeId           String
+  side                TradeSide
+  type                OrderType   @default(MARKET)
+  status              OrderStatus @default(PENDING)
+  shares              Int
+  limitPriceCents     Int?
+  sourcePriceCents    Int
+  executionPriceCents Int?
+  feeCents            Int         @default(0)
+  slippageBps         Int         @default(0)
+  notionalCents       Int         @default(0)
+  reason              String?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  user                User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  market              Market      @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  outcome             Outcome     @relation(fields: [outcomeId], references: [id], onDelete: Cascade)
+  fills               Fill[]
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([marketId, createdAt(sort: Desc)])
+}
+
+model Fill {
+  id         String   @id @default(cuid())
+  orderId    String
+  userId     String
+  marketId   String
+  outcomeId  String
+  shares     Int
+  priceCents Int
+  feeCents   Int
+  createdAt  DateTime @default(now())
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  market     Market   @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  outcome    Outcome  @relation(fields: [outcomeId], references: [id], onDelete: Cascade)
+
+  @@index([marketId, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+model ActivityLog {
+  id        String       @id @default(cuid())
+  userId    String?
+  marketId  String?
+  type      ActivityType
+  title     String
+  message   String
+  metadata  Json?
+  createdAt DateTime     @default(now())
+  user      User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  market    Market?      @relation(fields: [marketId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([type, createdAt(sort: Desc)])
+}
+
+model WatchlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  marketId  String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  market    Market   @relation(fields: [marketId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, marketId])
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+model PricePoint {
+  id              String   @id @default(cuid())
+  marketId        String
+  yesPriceCents   Int
+  noPriceCents    Int
+  volume24hCents  Int      @default(0)
+  createdAt       DateTime @default(now())
+  market          Market   @relation(fields: [marketId], references: [id], onDelete: Cascade)
+
+  @@index([marketId, createdAt(sort: Desc)])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  userId    String
+  marketId  String
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  market    Market   @relation(fields: [marketId], references: [id], onDelete: Cascade)
+
+  @@index([marketId, createdAt(sort: Desc)])
+}
+
+model LeaderboardSnapshot {
+  id                 String   @id @default(cuid())
+  userId             String
+  returnBps          Int
+  equityCents        Int
+  cashBalanceCents   Int
+  realizedPnlCents   Int
+  unrealizedPnlCents Int
+  rank               Int?
+  createdAt          DateTime @default(now())
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
+}

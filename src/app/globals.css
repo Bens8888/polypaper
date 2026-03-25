@@ -1,26 +1,196 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #061018;
+  --background-elevated: #0a1822;
+  --surface: rgba(12, 22, 31, 0.78);
+  --surface-strong: rgba(15, 28, 40, 0.94);
+  --surface-soft: rgba(10, 18, 27, 0.55);
+  --border: rgba(143, 168, 196, 0.14);
+  --border-strong: rgba(143, 168, 196, 0.24);
+  --foreground: #f8fafc;
+  --foreground-muted: #98a8ba;
+  --accent: #57d89b;
+  --accent-strong: #18a66d;
+  --accent-warm: #f4b25e;
+  --danger: #ff6b6b;
+  --chart-1: #57d89b;
+  --chart-2: #73a7ff;
+  --chart-3: #f4b25e;
+  --chart-4: #ff7b72;
+  --shadow-color: rgba(2, 6, 23, 0.42);
+  --radius-lg: 24px;
+  --radius-md: 18px;
+  --radius-sm: 12px;
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-background-elevated: var(--background-elevated);
+  --color-surface: var(--surface);
+  --color-surface-strong: var(--surface-strong);
+  --color-surface-soft: var(--surface-soft);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-foreground-muted: var(--foreground-muted);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-warm: var(--accent-warm);
+  --color-danger: var(--danger);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --font-sans: var(--font-sora);
+  --font-mono: var(--font-ibm-plex-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+  border-color: var(--border);
+}
+
+html {
+  min-height: 100%;
+  background:
+    radial-gradient(circle at top, rgba(87, 216, 155, 0.12), transparent 28%),
+    radial-gradient(circle at 80% 10%, rgba(115, 167, 255, 0.14), transparent 25%),
+    linear-gradient(180deg, #09111a 0%, #061018 50%, #040b12 100%);
+  color: var(--foreground);
 }
 
 body {
-  background: var(--background);
+  min-height: 100vh;
+  margin: 0;
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background:
+    linear-gradient(180deg, rgba(6, 16, 24, 0.92) 0%, rgba(6, 16, 24, 0.88) 100%),
+    radial-gradient(circle at top, rgba(87, 216, 155, 0.08), transparent 24%);
+  font-family: var(--font-sora), sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+body::before {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 72px 72px;
+  content: "";
+  opacity: 0.28;
+  pointer-events: none;
+}
+
+body::after {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(circle at bottom right, rgba(244, 178, 94, 0.08), transparent 20%),
+    radial-gradient(circle at 20% 80%, rgba(115, 167, 255, 0.08), transparent 24%);
+  content: "";
+  pointer-events: none;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+::selection {
+  background: rgba(87, 216, 155, 0.32);
+  color: #04110c;
+}
+
+.panel {
+  border: 1px solid var(--border);
+  background:
+    linear-gradient(180deg, rgba(18, 31, 44, 0.9) 0%, rgba(8, 18, 27, 0.88) 100%);
+  box-shadow:
+    0 24px 80px -36px var(--shadow-color),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(18px);
+}
+
+.panel-muted {
+  border: 1px solid rgba(143, 168, 196, 0.1);
+  background: linear-gradient(180deg, rgba(10, 18, 27, 0.78) 0%, rgba(9, 16, 24, 0.72) 100%);
+  box-shadow: 0 20px 70px -40px var(--shadow-color);
+}
+
+.text-dim {
+  color: var(--foreground-muted);
+}
+
+.glow-ring {
+  box-shadow:
+    0 0 0 1px rgba(87, 216, 155, 0.18),
+    0 0 0 6px rgba(87, 216, 155, 0.08);
+}
+
+.market-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+.scroll-soft {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(143, 168, 196, 0.2) transparent;
+}
+
+.scroll-soft::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.scroll-soft::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: rgba(143, 168, 196, 0.2);
+  background-clip: content-box;
+}
+
+.scroll-soft::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.grid-fade {
+  position: relative;
+}
+
+.grid-fade::after {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 54px;
+  background: linear-gradient(180deg, transparent 0%, rgba(6, 16, 24, 0.88) 100%);
+  content: "";
+  pointer-events: none;
+}
+
+@keyframes panel-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-panel-enter {
+  animation: panel-enter 0.35s ease-out;
 }
